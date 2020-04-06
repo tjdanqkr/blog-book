@@ -4,15 +4,31 @@ import Joi from 'joi';
 
 const { ObjectId } = mongoose.Types;
 
-export const checkObjectId = (ctx, next) => {
+export const getPostById = async (ctx, next) => {
   const { id } = ctx.params;
   if (!ObjectId.isValid(id)) {
     ctx.status = 400; // Bad Request
     return;
+  }try {
+    const post = await Post.findById(id);
+    if(!post){
+      ctx.status= 404;
+      return;
+    }
+    ctx.state.post= post;
+    return next();
+  } catch (error) {
+    ctx.throw(500,error);
+  }
+};
+export const checkOwnPost = (ctx, next)=>{
+  const {user,post} =ctx.state;
+  if(post.user._id.toString() !==user._id){
+    ctx.status=403;
+    return;
   }
   return next();
-};
-
+}
 /*
   POST /api/posts
   {
@@ -44,6 +60,7 @@ export const write = async ctx => {
     title,
     body,
     tags,
+    user: ctx.state.user,
   });
   try {
     await post.save();
